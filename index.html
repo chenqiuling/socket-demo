@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script></script>
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+  </head>
+  <body>
+    <div id="main"></div>
+
+    <script>
+      window.onload = function () {
+        function parseStringToObj(input) {
+          const regex = /id:\s*(.*?)\s*data:\s*(.*?)\s*(?=id:|$)/g
+          let result = { id: "", data: "" }
+          let match
+          while ((match = regex.exec(input)) !== null) {
+            result = {
+              id: match[1].trim(),
+              data: match[2].trim(),
+            }
+          }
+          return result
+        }
+
+        const contentEle = document.getElementById("main")
+        const md = window.markdownit()
+        let text = ""
+
+        const renderText = (ele, data) => {
+          const dataOBJ = parseStringToObj(data)
+          if (dataOBJ.data !== "[DONE]") {
+            const decodeData = decodeURIComponent(dataOBJ.data)
+            console.log("收到消息:", decodeData)
+            text += decodeData
+            contentEle.innerHTML = md.render(text)
+          }
+        }
+
+        const connectSocket = () => {
+          // 创建一个新的WebSocket实例
+          const socket = new WebSocket("ws://127.0.0.1:3006")
+
+          // 当WebSocket连接打开时触发
+          socket.onopen = function (event) {
+            console.log("WebSocket 连接已打开")
+            // 发送消息到WebSocket服务器
+            socket.send(JSON.stringify({ req_id: +new Date() }))
+          }
+
+          // 当WebSocket接收到服务器发送的消息时触发
+          socket.onmessage = function (event) {
+            const data = event.data
+            renderText(contentEle, data)
+            if (data.includes("[DONE]")) {
+              socket.close()
+            }
+          }
+
+          // 当WebSocket连接关闭时触发
+          socket.onclose = function (event) {
+            console.log("WebSocket 连接已关闭")
+          }
+
+          // 当WebSocket通信发生错误时触发
+          socket.onerror = function (error) {
+            console.error("WebSocket 出现错误:", error)
+          }
+        }
+
+        connectSocket()
+      }
+    </script>
+  </body>
+</html>
